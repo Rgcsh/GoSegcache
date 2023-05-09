@@ -1,0 +1,39 @@
+syntax = "proto3";
+option go_package = "/proto";
+
+service GoSegcacheApi {
+  //  存储缓存key,value
+  rpc Set(SetReq) returns (SetResponse);
+  //  根据缓存key获取缓存值
+  rpc Get(GetReq) returns (GetResponse);
+}
+
+message SetReq {
+  //  设置缓存的key
+  string key = 1;
+  //  设置缓存的值,类型必须为byte,所有的数据类型在传输前都要转为byte类型
+  bytes value = 2;
+  //  设置缓存的有效时间,非必填
+  optional float expire_time = 3;
+}
+
+message SetResponse{
+  //  执行结果 ok:存储成功 fail:程序错误
+  string message = 1;
+}
+
+message GetReq{
+  // 缓存的key
+  string key = 1;
+}
+
+message GetResponse{
+  //  获取数据的结果 ok:获取到缓存数据 no_exist:数据不存在
+  string message = 1;
+  //  设置缓存的值,bytes类型,所有的数据类型在使用前都要转为用户需要的类型
+  optional bytes value = 2;
+  //  缓存过期的时间范围的开始时间,非必填
+  optional double expire_start_time = 3;
+  //  缓存过期的时间范围的结束时间,非必填
+  optional double expire_end_time = 4;
+}
