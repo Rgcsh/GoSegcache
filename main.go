@@ -2,6 +2,7 @@ package main
 
 import (
 	"GoSegcache/config"
+	"GoSegcache/grpc_service/crontab"
 	"GoSegcache/grpc_service/rpc_api"
 	"GoSegcache/pkg/glog"
 	"GoSegcache/proto"
@@ -11,7 +12,6 @@ import (
 	"google.golang.org/grpc"
 	"math"
 	"net"
-	"runtime"
 	"runtime/debug"
 	"strconv"
 )
@@ -41,7 +41,9 @@ func init() {
 }
 
 func main() {
-	runtime.GC()
+	//启动子协程
+	go crontab.CleanExpiredData()
+
 	//读取服务端口号配置,转为字符串类型
 	serverPort := strconv.Itoa(config.Conf.Core.ServerPort)
 	host := fmt.Sprintf(":%s", serverPort)

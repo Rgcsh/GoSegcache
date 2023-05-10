@@ -24,67 +24,67 @@ func Byte2String(b []byte) string {
 	return string(b)
 }
 
-// Int32ToBytes
+// Int32ToByte
 //
 //	@Description: 整形转换成字节
 //	@param x:
 //	@return []byte:
-func Int32ToBytes(x int32) []byte {
+func Int32ToByte(x int32) []byte {
 	bytesBuffer := bytes.NewBuffer([]byte{})
 	_ = binary.Write(bytesBuffer, binary.BigEndian, x)
 	return bytesBuffer.Bytes()
 }
 
-// BytesToInt32
+// ByteToInt32
 //
 //	@Description: 字节转换成整形
 //	@param b:
 //	@return x:
-func BytesToInt32(b []byte) (x int32) {
+func ByteToInt32(b []byte) (x int32) {
 	bytesBuffer := bytes.NewBuffer(b)
 	_ = binary.Read(bytesBuffer, binary.BigEndian, &x)
 	return x
 }
 
-// BytesToUint8
+// ByteToUint8
 //
 //	@Description: 字节转换成整形
 //	@param b:
 //	@return x:
-func BytesToUint8(b []byte) (x uint8) {
+func ByteToUint8(b []byte) (x uint8) {
 	bytesBuffer := bytes.NewBuffer(b)
 	_ = binary.Read(bytesBuffer, binary.BigEndian, &x)
 	return x
 }
 
-// BytesToUint16
+// ByteToUint32
 //
 //	@Description: 字节转换成整形
 //	@param b:
 //	@return x:
-func BytesToUint16(b []byte) (x uint16) {
+func ByteToUint32(b []byte) (x uint32) {
 	bytesBuffer := bytes.NewBuffer(b)
 	_ = binary.Read(bytesBuffer, binary.BigEndian, &x)
 	return x
 }
 
-// Int64ToBytes
+// Int64ToByte
 //
 //	@Description: 整形转换成字节
 //	@param x:
 //	@return []byte:
-func Int64ToBytes(x int64) []byte {
+func Int64ToByte(x int64) []byte {
 	bytesBuffer := bytes.NewBuffer([]byte{})
 	_ = binary.Write(bytesBuffer, binary.BigEndian, x)
 	return bytesBuffer.Bytes()
 }
 
-// Uint8ToBytes
+// Uint8ToByte
 //
 //	@Description: 整形转换成字节
 //	@param x:
 //	@return []byte:
-func Uint8ToBytes(x uint8) []byte {
+func Uint8ToByte(x uint8) []byte {
 	bytesBuffer := bytes.NewBuffer([]byte{})
 	_ = binary.Write(bytesBuffer, binary.BigEndian, x)
 	return bytesBuffer.Bytes()
@@ -133,12 +133,12 @@ func GetUnixMinutes(t *time.Time) uint32 {
 	return uint32(unix / 60)
 }
 
-// Uint32ToBytes
+// Uint32ToByte
 //
 //	@Description: 整形转换成字节
 //	@param x:
 //	@return []byte:
-func Uint32ToBytes(x uint32) []byte {
+func Uint32ToByte(x uint32) []byte {
 	bytesBuffer := bytes.NewBuffer([]byte{})
 	_ = binary.Write(bytesBuffer, binary.BigEndian, x)
 	return bytesBuffer.Bytes()

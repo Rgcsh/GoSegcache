@@ -25,10 +25,12 @@ func (s *Service) Get(_ context.Context, r *proto.GetReq) (*proto.GetResponse, e
 	key := r.Key
 
 	//	从 KeyHashMap 检测key是否存在,不存在报错 message=no_exist
-	keyHashMapValue, ok := segcache_service.KeyHashMap[key]
+	//keyHashMapValue, ok := segcache_service.KeyHashMap[key]
+	keyHashMapV, ok := segcache_service.KeyHashMap.Load(key)
 	if ok != true {
 		return &proto.GetResponse{Message: "no exist"}, nil
 	}
+	keyHashMapValue := keyHashMapV.(segcache_service.KeyHashMapValue)
 
 	//获取当前时间
 	currentTime := time_util.GetCurrentTime()
@@ -40,37 +42,23 @@ func (s *Service) Get(_ context.Context, r *proto.GetReq) (*proto.GetResponse, e
 	segmentBody := *segment.Body
 	ttlMapValue := *segment.TTLMapValuePoint
 
-	// 获取到 key在segment索引位置,并找到对应值
-	startIndex := keyHashMapValue.StartIndex
-	keyLength := keyHashMapValue.KeyLength
-	keyEndIndex := startIndex + keyLength
-	keyByte := segmentBody[startIndex:keyEndIndex]
-	if transform.Byte2String(keyByte) != key {
-		// 从segment找的key和查询的key不一样,出bug了
-		glog.Log.Error("find value in segment has error,key is not equal to query key,is a bug!")
-		return &proto.GetResponse{Message: "find value error"}, nil
+	//获取到存储到segment里的此key对应的缓存数据
+	segmentItem, ok := segcache_service.ExtractSegmentItem(keyHashMapValue.SegmentPoint, keyHashMapValue.StartIndex)
+	if !ok {
+		return &proto.GetResponse{Message: "no exist"}, nil
 	}
-
-	// 获取到 value在segment索引位置,并找到对应值
-	valueLength := keyHashMapValue.ValueLength
-	valueEndIndex := keyEndIndex + valueLength
-	valueByte := segmentBody[keyEndIndex:valueEndIndex]
-
 	// 获取到 VisitCount在segment索引位置,并找到对应值
-	visitFrequencyByteStartIndex := valueEndIndex
-	visitFrequencyByteEndIndex := valueEndIndex + segcache_service.LenVisitFrequencyByte
-	visitFrequencyByte := segmentBody[visitFrequencyByteStartIndex:visitFrequencyByteEndIndex]
-	fmt.Println("获取visitFrequencyByte值", visitFrequencyByte)
+	currentUnixMinutesByte, newVisitCountByte := CalVisitCount(*segmentItem.VisitFrequencyByte, currentUnixFullMinutes, key)
 
-	currentUnixMinutesByte, newVisitCountByte := CalVisitCount(visitFrequencyByte, currentUnixFullMinutes, key)
 	// 存储 访问次数 相关数据
+	visitFrequencyByteStartIndex := segmentItem.VisitFrequencyByteStartIndex
 	segmentBody[visitFrequencyByteStartIndex] = currentUnixMinutesByte[0]
 	segmentBody[visitFrequencyByteStartIndex+1] = currentUnixMinutesByte[1]
 	segmentBody[visitFrequencyByteStartIndex+2] = newVisitCountByte[0]
-	fmt.Println("再次获取查看是否改变", (*segment.Body)[visitFrequencyByteStartIndex:visitFrequencyByteEndIndex])
+	fmt.Println("再次获取查看是否改变", (*segment.Body)[visitFrequencyByteStartIndex:visitFrequencyByteStartIndex+segcache_service.LenVisitFrequencyByte])
 
 	// 返回数据
-	getResponse := proto.GetResponse{Message: "OK", Value: valueByte}
+	getResponse := proto.GetResponse{Message: "OK", Value: *segmentItem.ValueByte}
 	// 如果超时时间是 0,表示永不过期,不用返回 过期时间,否则就要计算过期时间
 	if time_util.TimeSubSeconds(&ttlMapValue.ExpireStartTime, time_util.GetZeroTime()) != 0 {
 		expireStartTime := time_util.TimeSubSeconds(&currentTime, &ttlMapValue.ExpireStartTime)
@@ -95,12 +83,13 @@ func CalVisitCount(visitFrequencyByte []byte, currentUnixFullMinutes uint32, key
 	// 切分visitFrequencyByte,分成前半部分unix 16bits时间戳,和后半部分 8bits 访问次数;
 	//只存16bits长度的分钟数,数据最大值为uint类型的65535,对应业务中的分钟单位,即45天左右; 也就是说 16bits长度只能存储45天数据,若>45天后,随无法准确判断过了几个周期,默认当做下个周期计算; 但是 对于此算法来讲问题不大,因为 只影响这一次的衰减计算,只要后面访问频率<45天,就可以正确计算;
 	//存储的切分后的unix 16bits时间戳
-	storeUnixMinutes := transform.BytesToUint16(visitFrequencyByte[0:2])
+	fmt.Println("获取visitFrequencyByte值", visitFrequencyByte)
+	storeUnixMinutes := transform.ByteToUint16(visitFrequencyByte[0:2])
 	//当前时间的切分后的16bits分钟时间戳
-	currentUnixMinutesByte = transform.ByteTailSplit(transform.Uint32ToBytes(currentUnixFullMinutes), 2)
+	currentUnixMinutesByte = transform.ByteTailSplit(transform.Uint32ToByte(currentUnixFullMinutes), 2)
 	currentUnixMinutes := transform.ByteToUint16(currentUnixMinutesByte)
 	//访问次数
-	visitCount := transform.BytesToUint8(visitFrequencyByte[2:3])
+	visitCount := transform.ByteToUint8(visitFrequencyByte[2:3])
 	glog.Log.Debug(fmt.Sprintf("get key:%v visit count is :%v", key, visitCount))
 	//每次get取数时,先 根据 上次 访问时间,算出距离当前时间的 分钟差距(当 存储的时间戳>当前时间戳,表示过了一个或多个周期,则算法为:2**16-存储的时间戳+当前时间戳;反之 就是 当前时间戳-存储的时间戳),根据配置项(lfu-decay-time) 计算出衰减值; 公式: 分钟差距/lfu-decay-time ; 也就是lfu-decay-time值越大,衰减越慢
 	var unitMinutesSub uint16
@@ -136,7 +125,7 @@ func CalVisitCount(visitFrequencyByte []byte, currentUnixFullMinutes uint32, key
 			glog.Log.Debug(fmt.Sprintf("key:%v add a visit count success,so lucky,result visist count is:%v", key, newVisitCount))
 		}
 	}
-	newVisitCountByte = transform.Uint8ToBytes(newVisitCount)
+	newVisitCountByte = transform.Uint8ToByte(newVisitCount)
 	fmt.Println("newVisitCountByte最终修改后值为:", newVisitCountByte)
 	return currentUnixMinutesByte, newVisitCountByte
 }

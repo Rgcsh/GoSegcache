@@ -2,6 +2,7 @@ package rpc_api
 
 import (
 	"GoSegcache/config"
+	"GoSegcache/grpc_service/crontab"
 	"GoSegcache/pkg/glog"
 	"GoSegcache/proto"
 	"google.golang.org/grpc"
@@ -22,6 +23,7 @@ func SetUp() {
 }
 func TestMain(m *testing.M) {
 	SetUp()
+	go crontab.CleanExpiredData()
 	BufListener = bufconn.Listen(1024 * 1024)
 	s := grpc.NewServer(grpc.MaxRecvMsgSize(1024 * 1024 * 10))
 

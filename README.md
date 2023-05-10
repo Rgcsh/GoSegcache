@@ -19,7 +19,8 @@
 
 ### 缺点
 
-* 淡化了缓存的过期时间精度,可能会使缓存提前过期,但是在缓存系统中,这种问题可以忽略;
+* 淡化了缓存的过期时间精度,可能会使缓存提前过期或稍后过期(在缓存超过1天时间的,过期最大误差为1h),但是在缓存系统中,这种问题可以忽略;
+* todo:后续 尝试优化 TTL buckets的存储结构 达到 存取效率 及 缓存时间问题的平衡;
 
 ### 与其他缓存平台的对比
 
@@ -84,6 +85,7 @@
 * [redis LFU算法实现具体到代码层细节](https://blog.csdn.net/m0_69745415/article/details/124370410)
 * [psutil使用](https://blog.csdn.net/haiming0415/article/details/125313441)
 * [VSS、RSS、PSS、USS 内存使用分析](https://blog.csdn.net/m0_51504545/article/details/119685325)
+
 # todo
 
 * go性能优化方法 https://tehub.com/a/c2qgqWywfl

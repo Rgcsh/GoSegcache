@@ -5,11 +5,12 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 )
 
 func TestSet(t *testing.T) {
 	c := proto.NewGoSegcacheApiClient(Connect())
-	expire_time := float32(10000000)
+	expire_time := float32(2)
 	//expire_time := float32(10)
 	value := []byte("abc")
 	r, err := c.Set(context.Background(), &proto.SetReq{Key: "你好", Value: value, ExpireTime: &expire_time})
@@ -18,17 +19,19 @@ func TestSet(t *testing.T) {
 	} else {
 		fmt.Println(r.Message)
 	}
-	//r, err = c.Set(context.Background(), &proto.SetReq{Key: "你好", Value: value, ExpireTime: &expire_time})
-	//if err != nil {
-	//	fmt.Println(err)
-	//} else {
-	//	fmt.Println(r.Message)
-	//}
 	r1, err := c.Get(context.Background(), &proto.GetReq{Key: "你好"})
+	if err != nil {
+		fmt.Println(err)
+	} else {
+		fmt.Println("success", r1)
+	}
+	time.Sleep(time.Second * 3)
+
 	r1, err = c.Get(context.Background(), &proto.GetReq{Key: "你好"})
 	if err != nil {
 		fmt.Println(err)
 	} else {
 		fmt.Println("success", r1)
 	}
+
 }

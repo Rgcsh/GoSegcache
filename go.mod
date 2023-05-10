@@ -3,6 +3,7 @@ module GoSegcache
 go 1.20
 
 require (
+	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	go.uber.org/zap v1.24.0
 	google.golang.org/grpc v1.54.0
