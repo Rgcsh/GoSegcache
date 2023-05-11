@@ -1,0 +1,16 @@
+Core:
+  UserName: User
+  PassWord: 123
+  ServerPort: 17434
+  #  表示 LFU衰减时,衰减程度,值越大,衰减越慢; 值 >=0,为uint16类型,最大值为65535;
+  LFUDecayTime: 1
+  #  表示 LFU增加访问量的概率,数值越大,则概率越小,越不容易新增访问次数; 值 >=0,为uint16类型,最大值为65535;
+  LFULogFactor: 1
+  # 设置go程序运行使用的最大内存
+  GOMemLimit: 1G
+  # 设置LFU 删除数据时的 访问次数 阈值(最大值为255);小于访问次数的key会被删除
+  LFUVisitCountLimit: 20
+  # 设置是否启动LFU算法,当内存快达到限制时,主动删除访问频率低的缓存数据 1:启动 0:不启动
+  LFUEnable: 1
+  # 程序消耗主机 物理内存多少时,触发LFU算法
+  LFUMemLimit: 1G

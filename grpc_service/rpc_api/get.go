@@ -47,6 +47,14 @@ func (s *Service) Get(_ context.Context, r *proto.GetReq) (*proto.GetResponse, e
 	if !ok {
 		return &proto.GetResponse{Message: "no exist"}, nil
 	}
+
+	// 获取到 key在segment索引位置,并找到对应值
+	if segmentItem.Key != key {
+		// 从segment找的key和查询的key不一样,出bug了
+		glog.Log.Error("find value in segment has error,key is not equal to query key,is a bug!")
+		return &proto.GetResponse{Message: "find value error"}, nil
+	}
+
 	// 获取到 VisitCount在segment索引位置,并找到对应值
 	currentUnixMinutesByte, newVisitCountByte := CalVisitCount(*segmentItem.VisitFrequencyByte, currentUnixFullMinutes, key)
 

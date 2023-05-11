@@ -7,6 +7,7 @@ import (
 	"GoSegcache/proto"
 	"GoSegcache/segcache_service"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/test/bufconn"
 	"log"
 	"net"
@@ -22,6 +23,7 @@ func SetUp() {
 	config.SetUp()
 	glog.SetUp()
 }
+
 func TestMain(m *testing.M) {
 	SetUp()
 	go crontab.CleanExpiredData()
@@ -40,11 +42,14 @@ func TestMain(m *testing.M) {
 	s.Stop()
 	os.Exit(code)
 }
+
 func BufDialer(context.Context, string) (net.Conn, error) {
 	return BufListener.Dial()
 }
+
 func Connect() *grpc.ClientConn {
 	conn, _ := grpc.DialContext(context.Background(), "bufnet", grpc.WithContextDialer(BufDialer),
-		grpc.WithInsecure())
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
 	return conn
 }
