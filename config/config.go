@@ -7,6 +7,7 @@ import (
 	"gopkg.in/dealancer/validate.v2"
 	"gopkg.in/yaml.v2"
 	"os"
+	"reflect"
 )
 
 // Core
@@ -35,7 +36,7 @@ type Core struct {
 	LFUMemLimit string `default:"1G" yaml:"LFUMemLimit"`
 	// 对LFUMemLimitVal单位换算为Byte
 	LFUMemLimitVal int64
-	//单个segment大小;如 1B,2K,3M,4G,5T;默认值为1G
+	//单个segment大小;如 1B,2K,3M,4G,5T;默认值为10M
 	SegmentSize string `default:"10M" yaml:"SegmentSize"`
 	//对SegmentSize单位换算为Byte
 	SegmentSizeVal int64
@@ -75,25 +76,32 @@ func SetUp() {
 		panic(fmt.Sprintf("参数校验失败,请检测配置文件是否符合限制,错误为:%v", err))
 	}
 
-	//修改LFUMemLimit 为byte长度
-	size, unit, err := utils.ExtractStoreUnit(Conf.Core.LFUMemLimit)
-	if err != nil {
-		panic(fmt.Sprintf("LFUMemLimit error:%s,should be '3K','3G','3T','3M'...", err))
-	}
-	Conf.Core.LFUMemLimitVal = utils.ToBytes(size, unit)
+	HandlerConf("GOMemLimit")
+	HandlerConf("LFUMemLimit")
+	HandlerConf("SegmentSize")
+}
 
-	//修改GOMemLimit 为byte长度
-	size, unit, err = utils.ExtractStoreUnit(Conf.Core.GOMemLimit)
+// HandlerConf
+//
+//	@Description: 通过反射 处理字段 并给对应的字段赋值
+//	@param s:
+func HandlerConf(s string) {
+	core := &Conf.Core
+	v := reflect.ValueOf(core)
+	//根据字符串获取 在结构体中的字段
+	field := v.Elem().FieldByName(s)
+	//获取字段对应的值
+	fieldVale := field.Interface().(string)
+
+	//数据处理部分
+	size, unit, err := utils.ExtractStoreUnit(fieldVale)
 	if err != nil {
 		panic(fmt.Sprintf("GOMemLimit error:%s,should be '3K','3G','3T','3M'...", err))
 	}
-	Conf.Core.GOMemLimitVal = utils.ToBytes(size, unit)
+	lfuMemLimitVal := utils.ToBytes(size, unit)
 
-	//修改SegmentSize 为byte长度
-	size, unit, err = utils.ExtractStoreUnit(Conf.Core.SegmentSize)
-	if err != nil {
-		panic(fmt.Sprintf("SegmentSize error:%s,should be '3K','3G','3T','3M'...", err))
-	}
-	Conf.Core.SegmentSizeVal = utils.ToBytes(size, unit)
-
+	//获取 结构体中的新字段
+	newField := v.Elem().FieldByName(s + "Val")
+	//给新字段 赋值
+	newField.SetInt(lfuMemLimitVal)
 }
