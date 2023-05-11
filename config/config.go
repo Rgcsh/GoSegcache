@@ -35,6 +35,10 @@ type Core struct {
 	LFUMemLimit string `default:"1G" yaml:"LFUMemLimit"`
 	// 对LFUMemLimitVal单位换算为Byte
 	LFUMemLimitVal int64
+	//单个segment大小;如 1B,2K,3M,4G,5T;默认值为1G
+	SegmentSize string `default:"10M" yaml:"SegmentSize"`
+	//对SegmentSize单位换算为Byte
+	SegmentSizeVal int64
 }
 
 type Config struct {
@@ -84,5 +88,12 @@ func SetUp() {
 		panic(fmt.Sprintf("GOMemLimit error:%s,should be '3K','3G','3T','3M'...", err))
 	}
 	Conf.Core.GOMemLimitVal = utils.ToBytes(size, unit)
+
+	//修改SegmentSize 为byte长度
+	size, unit, err = utils.ExtractStoreUnit(Conf.Core.SegmentSize)
+	if err != nil {
+		panic(fmt.Sprintf("SegmentSize error:%s,should be '3K','3G','3T','3M'...", err))
+	}
+	Conf.Core.SegmentSizeVal = utils.ToBytes(size, unit)
 
 }

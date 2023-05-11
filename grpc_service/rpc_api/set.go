@@ -1,6 +1,7 @@
 package rpc_api
 
 import (
+	"GoSegcache/config"
 	"GoSegcache/pkg/glog"
 	"GoSegcache/proto"
 	"GoSegcache/segcache_service"
@@ -76,7 +77,7 @@ func (s *Service) Set(_ context.Context, r *proto.SetReq) (*proto.SetResponse, e
 		var segmentPoint *segcache_service.Segment
 		var startIndex = 0
 		//	然后判断 segment剩余空间是否够存新数据
-		if segcache_service.SegmentBodyLen-lenBody >= storeByteLen {
+		if int(config.Conf.Core.SegmentSizeVal)-lenBody >= storeByteLen {
 			glog.Log.Debug("segment body is enough to store new cache")
 			//segment剩余空间够用,直接存新数据即可
 			body = append(body, mergeSegmentByte...)
@@ -98,7 +99,7 @@ func (s *Service) Set(_ context.Context, r *proto.SetReq) (*proto.SetResponse, e
 	} else {
 		// 	没有就新增一个TTLMap的key,再新建segment,然后将数据先计算好长度(偏移量)后放入segment,将segment指针访问TTL map的value中; 再将key和偏移量放入hash table
 		glog.Log.Debug("key has not existed in TTLMap,now create a new key/value in TTLMap")
-		storeByte := make([]byte, 0, segcache_service.SegmentBodyLen)
+		storeByte := make([]byte, 0, config.Conf.Core.SegmentSizeVal)
 		storeByte = append(storeByte, mergeSegmentByte...)
 		ttlMapValue := segcache_service.TTLMapValue{ExpireStartTime: (*expireStartTime).Unix(), ExpireEndTime: (*expireEndTime).Unix()}
 		segment := segcache_service.Segment{TTLMapValuePoint: &ttlMapValue, NextSegment: nil, Body: &storeByte}
@@ -126,7 +127,7 @@ func (s *Service) Set(_ context.Context, r *proto.SetReq) (*proto.SetResponse, e
 func newSegmentAndPoint(mergeSegmentByte []byte, ttlMapValueObj *segcache_service.TTLMapValue) (segmentPoint *segcache_service.Segment) {
 	glog.Log.Debug("segment body is not enough,now will create a new segment")
 	//新建一个segment,填入数据
-	storeByte := make([]byte, 0, segcache_service.SegmentBodyLen)
+	storeByte := make([]byte, 0, config.Conf.Core.SegmentSizeVal)
 	storeByte = append(storeByte, mergeSegmentByte...)
 	segmentPoint = &segcache_service.Segment{TTLMapValuePoint: ttlMapValueObj, NextSegment: nil, Body: &storeByte}
 	//修改TTLMap的TailSegment指向新的segment

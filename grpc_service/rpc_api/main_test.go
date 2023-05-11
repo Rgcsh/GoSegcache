@@ -5,7 +5,6 @@ import (
 	"GoSegcache/grpc_service/crontab"
 	"GoSegcache/pkg/glog"
 	"GoSegcache/proto"
-	"GoSegcache/segcache_service"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/test/bufconn"
@@ -28,7 +27,7 @@ func TestMain(m *testing.M) {
 	SetUp()
 	go crontab.CleanExpiredData()
 	BufListener = bufconn.Listen(1024 * 1024)
-	s := grpc.NewServer(grpc.MaxRecvMsgSize(segcache_service.SegmentBodyLen))
+	s := grpc.NewServer(grpc.MaxRecvMsgSize(int(config.Conf.Core.SegmentSizeVal)))
 
 	proto.RegisterGoSegcacheApiServer(s, &Service{})
 

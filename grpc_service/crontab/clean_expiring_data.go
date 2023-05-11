@@ -78,7 +78,7 @@ func FilterSegment(ttlMapValue *segcache_service.TTLMapValue) {
 	segment := ttlMapValue.HeadSegment
 	//处理当前segment数据
 	startIndex := uint32(0)
-	storeByte := make([]byte, 0, segcache_service.SegmentBodyLen)
+	storeByte := make([]byte, 0, config.Conf.Core.SegmentSizeVal)
 	newSegment := &segcache_service.Segment{TTLMapValuePoint: ttlMapValue, Body: &storeByte}
 	//新的头segment
 	newHeadSegment := newSegment
@@ -137,7 +137,7 @@ func HandlerSegmentItem(oldSegment, newSegment *segcache_service.Segment, startI
 	var newSegmentBodyStartIndex = 0
 
 	//	然后判断 segment剩余空间是否够存新数据
-	if segcache_service.SegmentBodyLen-newSegmentBodyLen >= storeByteLen {
+	if int(config.Conf.Core.SegmentSizeVal)-newSegmentBodyLen >= storeByteLen {
 		//segment剩余空间够用,直接存新数据即可
 		glog.Log.Debug("segment body is enough to store new cache")
 		newSegmentBodyStartIndex = newSegmentBodyLen
@@ -148,7 +148,7 @@ func HandlerSegmentItem(oldSegment, newSegment *segcache_service.Segment, startI
 	//segment剩余空间不够
 	glog.Log.Debug("segment body is not enough,now will create a new segment")
 	//新建一个segment,填入数据
-	storeByte := make([]byte, 0, segcache_service.SegmentBodyLen)
+	storeByte := make([]byte, 0, config.Conf.Core.SegmentSizeVal)
 	storeByte = append(storeByte, itemByte...)
 	createNewSegment := &segcache_service.Segment{TTLMapValuePoint: ttlMapValue, NextSegment: nil, Body: &storeByte}
 	//将2个segment 指针链接
