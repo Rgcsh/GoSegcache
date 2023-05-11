@@ -3,7 +3,6 @@ package segcache_service
 import (
 	"GoSegcache/utils/time_util"
 	"sync"
-	"time"
 )
 
 const SegmentBodyLen = 1024 * 1024 * 10
@@ -26,12 +25,13 @@ type TTLMapValue struct {
 	HeadSegment *Segment
 	TailSegment *Segment
 	//get操作及删除过期数据时需要
-	ExpireStartTime time.Time
-	ExpireEndTime   time.Time
+	//时间格式使用 unix时间戳,省内存
+	ExpireStartTime int64
+	ExpireEndTime   int64
 }
 
-// TTLMap key值为 过期时间范围的起始时间
-type TTLMap map[string]*TTLMapValue
+// TTLMap key值为 过期时间范围的起始时间(格式使用 unix时间戳,省内存)
+type TTLMap map[int64]*TTLMapValue
 
 // TTLMapS 秒级的ttl map
 // var TTLMapS TTLMap = make(TTLMap)

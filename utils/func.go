@@ -79,3 +79,25 @@ func GetProcessMemoryInfo() {
 	fmt.Println(p.MemoryInfo())
 	fmt.Println(p.MemoryPercent())
 }
+
+// GetProcessId
+//
+//	@Description: 获取当前进程ID
+//	@return int:
+func GetProcessId() int {
+	return os.Getpid()
+}
+
+// GetProcessPhysicalMemory
+//
+//	@Description: 获取进程消耗的物理内存
+func GetProcessPhysicalMemory(pid int) (uint64, error) {
+	p, err := process.NewProcess(int32(pid))
+	if err != nil {
+		return 0, err
+	}
+	//RSS:实际占用的物理内存,可以依此作为 内存是否达到阈值的判断依据
+	//VMS:实际使用的虚拟内存
+	memoryInfoStat, err := p.MemoryInfo()
+	return memoryInfoStat.RSS, err
+}

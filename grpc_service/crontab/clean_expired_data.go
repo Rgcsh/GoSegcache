@@ -28,7 +28,7 @@ func CleanExpiredData() {
 		ttlMap.Range(func(key, value any) bool {
 			v := value.(*segcache_service.TTLMapValue)
 			//检查是否过期
-			expireEndTime := v.ExpireEndTime
+			expireEndTime := *time_util.UnixToTime(v.ExpireEndTime)
 			if currentTime.Before(expireEndTime) {
 				return true
 			}

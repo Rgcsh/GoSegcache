@@ -20,7 +20,7 @@ import (
 //	@return error:
 func (s *Service) Set(_ context.Context, r *proto.SetReq) (*proto.SetResponse, error) {
 	key := r.Key
-	keyByte := transform.String2Byte(key)
+	keyByte := transform.StringToByte(key)
 	lenKeyByte := len(keyByte)
 
 	valueByte := r.Value
@@ -65,11 +65,11 @@ func (s *Service) Set(_ context.Context, r *proto.SetReq) (*proto.SetResponse, e
 
 	//	判断 过期开始时间 在 对应TTL 级别的map中是否有对应的key
 	//if ttlMapValueObj, ok := TTLMapClassify[*time_util.TimeToString(*expireStartTime, time_util.DateTimeFormat)]; ok {
-	if ttlMapValueO, ok := TTLMapClassify.Load(*time_util.TimeToString(*expireStartTime, time_util.DateTimeFormat)); ok {
+	if ttlMapValueInterface, ok := TTLMapClassify.Load((*expireStartTime).Unix()); ok {
 		//在 对应TTL 级别的map中有对应的key时的处理流程
 		glog.Log.Debug("key has existed in TTLMap")
 		//	有TTL map,就取指向segment的尾指针
-		ttlMapValueObj := ttlMapValueO.(*segcache_service.TTLMapValue)
+		ttlMapValueObj := ttlMapValueInterface.(*segcache_service.TTLMapValue)
 		tailSegment := *ttlMapValueObj.TailSegment
 		body := *tailSegment.Body
 		lenBody := len(body)
@@ -83,8 +83,9 @@ func (s *Service) Set(_ context.Context, r *proto.SetReq) (*proto.SetResponse, e
 			startIndex = lenBody
 			segmentPoint = &tailSegment
 		} else {
-			//segment剩余空间不够
+			//segment剩余空间不够,新建一个,然后与老的segment 指针链接
 			segmentPoint = newSegmentAndPoint(mergeSegmentByte, ttlMapValueObj)
+			tailSegment.NextSegment = segmentPoint
 		}
 		// 将key和偏移量放入hash table
 		glog.Log.Debug("key stored in KeyHashMap")
@@ -97,14 +98,14 @@ func (s *Service) Set(_ context.Context, r *proto.SetReq) (*proto.SetResponse, e
 	} else {
 		// 	没有就新增一个TTLMap的key,再新建segment,然后将数据先计算好长度(偏移量)后放入segment,将segment指针访问TTL map的value中; 再将key和偏移量放入hash table
 		glog.Log.Debug("key has not existed in TTLMap,now create a new key/value in TTLMap")
-		storeByte := make([]byte, 0, 1024*1024*10)
+		storeByte := make([]byte, 0, segcache_service.SegmentBodyLen)
 		storeByte = append(storeByte, mergeSegmentByte...)
-		ttlMapValue := segcache_service.TTLMapValue{ExpireStartTime: *expireStartTime, ExpireEndTime: *expireEndTime}
+		ttlMapValue := segcache_service.TTLMapValue{ExpireStartTime: (*expireStartTime).Unix(), ExpireEndTime: (*expireEndTime).Unix()}
 		segment := segcache_service.Segment{TTLMapValuePoint: &ttlMapValue, NextSegment: nil, Body: &storeByte}
 		ttlMapValue.HeadSegment = &segment
 		ttlMapValue.TailSegment = &segment
 		//TTLMapClassify[*time_util.TimeToString(*expireStartTime, time_util.DateTimeFormat)] = &ttlMapValue
-		TTLMapClassify.Store(*time_util.TimeToString(*expireStartTime, time_util.DateTimeFormat), &ttlMapValue)
+		TTLMapClassify.Store((*expireStartTime).Unix(), &ttlMapValue)
 		keyHashMapValue := segcache_service.KeyHashMapValue{
 			SegmentPoint: &segment,
 			StartIndex:   0,
@@ -125,7 +126,7 @@ func (s *Service) Set(_ context.Context, r *proto.SetReq) (*proto.SetResponse, e
 func newSegmentAndPoint(mergeSegmentByte []byte, ttlMapValueObj *segcache_service.TTLMapValue) (segmentPoint *segcache_service.Segment) {
 	glog.Log.Debug("segment body is not enough,now will create a new segment")
 	//新建一个segment,填入数据
-	storeByte := make([]byte, 0, 1024*1024*10)
+	storeByte := make([]byte, 0, segcache_service.SegmentBodyLen)
 	storeByte = append(storeByte, mergeSegmentByte...)
 	segmentPoint = &segcache_service.Segment{TTLMapValuePoint: ttlMapValueObj, NextSegment: nil, Body: &storeByte}
 	//修改TTLMap的TailSegment指向新的segment

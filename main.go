@@ -6,43 +6,31 @@ import (
 	"GoSegcache/grpc_service/rpc_api"
 	"GoSegcache/pkg/glog"
 	"GoSegcache/proto"
-	"GoSegcache/utils"
+	"GoSegcache/segcache_service"
 	"fmt"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
-	"math"
 	"net"
 	"runtime/debug"
 	"strconv"
 )
-
-// setMemoryLimit
-//
-//	@Description: 设置内存使用限制
-func setMemoryLimit() {
-	size, unit, err := utils.ExtractStoreUnit(config.Conf.Core.GOMEMLIMIT)
-	if err != nil {
-		e := fmt.Sprintf("GOMEMLIMIT error:%s,should be '3K','3G','3T','3M'...", err)
-		glog.Log.Error(e)
-		panic(e)
-	}
-	memoryLimit := utils.ToBytes(size, unit)
-	debug.SetMemoryLimit(memoryLimit)
-	return
-}
 
 // init
 //
 //	@Description: 初始化一下启动项
 func init() {
 	config.SetUp()
-	setMemoryLimit()
+	//设置内存使用限制
+	debug.SetMemoryLimit(config.Conf.Core.GOMemLimitVal)
 	glog.SetUp()
 }
 
 func main() {
-	//启动子协程
+	//启动主动删除缓存功能 相关子协程
 	go crontab.CleanExpiredData()
+	if config.Conf.Core.LFUEnable == 1 {
+		go crontab.CleanExpiringData()
+	}
 
 	//读取服务端口号配置,转为字符串类型
 	serverPort := strconv.Itoa(config.Conf.Core.ServerPort)
@@ -54,7 +42,7 @@ func main() {
 		return
 	}
 	//最大接受消息大小为10M
-	s := grpc.NewServer(grpc.MaxRecvMsgSize(int(math.Pow(2, 20)) * 10))
+	s := grpc.NewServer(grpc.MaxRecvMsgSize(segcache_service.SegmentBodyLen))
 	proto.RegisterGoSegcacheApiServer(s, &rpc_api.Service{})
 
 	//启动grpc服务

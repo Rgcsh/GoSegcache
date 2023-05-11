@@ -63,7 +63,7 @@ func ExtractSegmentItem(segment *Segment, startIndex uint32) (*SegmentBodyItem, 
 	lenValueByte := transform.ByteToUint32(b[startIndex+4 : startIndex+8])
 	//获取 key值
 	keyByte := b[startIndex+8 : startIndex+8+lenKeyByte]
-	key := transform.Byte2String(keyByte)
+	key := transform.ByteToString(keyByte)
 	//获取 value值
 	valueByte := b[startIndex+8+lenKeyByte : startIndex+8+lenKeyByte+lenValueByte]
 	//获取 访问频率(固定3个字节)

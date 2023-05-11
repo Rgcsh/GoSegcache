@@ -67,6 +67,12 @@ func ParseLocal(inputTime time.Time) string {
 	return inputTime.In(loc).Format(DateTimeFormat)
 }
 
+func UnixToTime(unixTime int64) *time.Time {
+	t := time.Unix(unixTime, 0)
+
+	return &t
+}
+
 // FormatTimeLocal
 //
 //	@Description: 将时间修改为上海时区,并 返回 DateTimeFormat 字符串格式

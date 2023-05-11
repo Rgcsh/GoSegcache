@@ -6,21 +6,21 @@ import (
 	"time"
 )
 
-// String2Byte
+// StringToByte
 //
 //	@Description: 字符串转为byte类型
 //	@param s:
 //	@return []byte:
-func String2Byte(s string) []byte {
+func StringToByte(s string) []byte {
 	return []byte(s)
 }
 
-// Byte2String
+// ByteToString
 //
 //	@Description: byte转字符串
 //	@param b:
 //	@return string:
-func Byte2String(b []byte) string {
+func ByteToString(b []byte) string {
 	return string(b)
 }
 
