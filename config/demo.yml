@@ -14,3 +14,5 @@ Core:
   LFUEnable: 1
   # 程序消耗主机 物理内存多少时,触发LFU算法
   LFUMemLimit: 1G
+  # 单个segment大小
+  SegmentSize: 2M

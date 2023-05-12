@@ -32,40 +32,50 @@ var lfuVisitCountLimit = config.Conf.Core.LFUVisitCountLimit
 //	@Description:
 func CleanExpiringData() {
 	currentTime := time_util.GetCurrentTime()
-	glog.Log.Debug(fmt.Sprintf("start clean expiring data,current time is %v", currentTime))
+	glog.Log.Debug(fmt.Sprintf("开始清除处于过期范围内的部分访问频率低的数据 任务"))
 
-	rss, err := utils.GetProcessPhysicalMemory(pid)
+	//获取此程序消耗物理内存
+	usedRss, err := utils.GetProcessPhysicalMemory(pid)
 	if err != nil {
 		panic(fmt.Sprintf("Get current process memory info fail, error is %v", err))
 	}
 
 	// 检测 程序消耗的物理内存是否超过限制
-	if uint64(config.Conf.Core.LFUMemLimitVal) > rss {
-		//未超过限制进入下次循环
-		//睡1分钟循环执行下一次
-		time.Sleep(time.Second * 10)
+	memLimit := uint64(config.Conf.Core.LFUMemLimitVal)
+	glog.Log.Debug(fmt.Sprintf("获取到此程序消耗物理内存为:%v,配置中限制内存为:%v", memLimit, usedRss))
+	if usedRss > memLimit {
+		//未超过限制进入下次循环 睡1分钟循环执行下一次
+		sleep := time.Second * 10
+		glog.Log.Debug(fmt.Sprintf("未超过内存限制,睡眠 %v秒后 进入下次循环", sleep))
+		time.Sleep(sleep)
 		CleanExpiringData()
 	}
 
 	//对2个TTLMap级别的数据进行遍历
-	for _, ttlMap := range TTLMapNeedExpiring {
+	glog.Log.Debug(fmt.Sprintf("超过内存限制,开始清理部分过期数据"))
+	for index, ttlMap := range TTLMapNeedExpiring {
+		glog.Log.Debug(fmt.Sprintf("开始处理 第%v个 TTLMap", index+1))
 		//检查出过期需要删除的key,找到对应的TTLMap的值,接着找到对应的首segment
 		ttlMap.Range(func(key, value any) bool {
 			v := value.(*segcache_service.TTLMapValue)
 			//检查是否过期
-			expireEndTime := *time_util.UnixToTime(v.ExpireEndTime)
 			expireStartTime := *time_util.UnixToTime(v.ExpireStartTime)
+			expireEndTime := *time_util.UnixToTime(v.ExpireEndTime)
+			glog.Log.Debug(fmt.Sprintf("key:%v,过期时间范围是 %v-->%v", key, expireStartTime, expireEndTime))
 			//当前时间 不在 过期时间范围内,就跳过此条
 			if !(currentTime.Before(expireEndTime) && currentTime.After(expireStartTime)) {
+				glog.Log.Debug("当前时间 不在 key的过期时间范围,跳过此条数据")
 				return true
 			}
 			//对segment链表进行处理
+			glog.Log.Debug("当前时间 在key过期时间范围内,开始对segment链表进行处理")
 			FilterSegment(v)
+			glog.Log.Debug(fmt.Sprintf("当前时间 key:%v 对应segment链表已经处理完成", key))
 			return true
 		})
 	}
 
-	//睡1分钟循环执行下一次
+	glog.Log.Debug("睡1分钟循环执行下一次")
 	time.Sleep(time.Minute)
 	CleanExpiringData()
 }
@@ -86,6 +96,7 @@ func FilterSegment(ttlMapValue *segcache_service.TTLMapValue) {
 	for {
 		//对单个segment里的item循环
 		for {
+			glog.Log.Debug("开始循环单个segment里的数据")
 			var ok bool
 			newSegment, startIndex, ok = HandlerSegmentItem(segment, newSegment, startIndex, ttlMapValue)
 			if !ok {
@@ -93,14 +104,14 @@ func FilterSegment(ttlMapValue *segcache_service.TTLMapValue) {
 			}
 		}
 
-		//到下一个segment继续执行
-		startIndex = uint32(0)
+		glog.Log.Debug("到下一个segment继续执行")
 		segment := segment.NextSegment
 		if segment == nil {
+			glog.Log.Debug("segment链表已经全部处理完成")
 			break
 		}
 	}
-	//将新的收尾segment指针 赋值给ttlMapValue,从而放弃老segment,让GC处理
+	glog.Log.Debug("将新的首尾segment指针 赋值给ttlMapValue,从而放弃老segment,让GC处理")
 	ttlMapValue.HeadSegment = newHeadSegment
 	ttlMapValue.TailSegment = newSegment
 }
@@ -118,18 +129,22 @@ func FilterSegment(ttlMapValue *segcache_service.TTLMapValue) {
 func HandlerSegmentItem(oldSegment, newSegment *segcache_service.Segment, startIndex uint32, ttlMapValue *segcache_service.TTLMapValue) (*segcache_service.Segment, uint32, bool) {
 	segmentItem, ok := segcache_service.ExtractSegmentItem(oldSegment, startIndex)
 	if !ok {
-		return nil, 0, false
+		glog.Log.Debug("当前segment的Body已经访问到尾部,没有新数据,直接返回")
+		return newSegment, 0, false
 	}
 	key := segmentItem.Key
 	//获取访问次数,并与 配置的 LFUVisitCountLimit对比
 	visitCount := transform.ByteToUint8((*oldSegment.Body)[segmentItem.VisitFrequencyByteStartIndex+2 : segmentItem.VisitFrequencyByteStartIndex+3])
 	// < LFUVisitCountLimit时,删除KeyHashMap中的key即可
+	glog.Log.Debug(fmt.Sprintf("缓存key:%v 访问次数:%v,配置访问次数阈值:%v", key, visitCount, lfuVisitCountLimit))
 	if visitCount < lfuVisitCountLimit {
+		glog.Log.Debug(fmt.Sprintf("未超过配置访问次数阈值,从KeyHashMap中删除key:%v对应相关数据", key))
 		segcache_service.KeyHashMap.Delete(key)
-		return oldSegment, segmentItem.NextItemStartIndex, true
+		return newSegment, segmentItem.NextItemStartIndex, true
 	}
 
 	// >= LFUVisitCountLimit时,将现在的segment中对应的item byte切片数据copy到 newSegment中(注意空间是否足够的处理)
+	glog.Log.Debug(fmt.Sprintf("超过配置访问次数阈值,key:%v 正常进行后续任务", key))
 	itemByte := (*oldSegment.Body)[startIndex:segmentItem.NextItemStartIndex]
 	storeByteLen := len(itemByte)
 
@@ -139,14 +154,14 @@ func HandlerSegmentItem(oldSegment, newSegment *segcache_service.Segment, startI
 	//	然后判断 segment剩余空间是否够存新数据
 	if int(config.Conf.Core.SegmentSizeVal)-newSegmentBodyLen >= storeByteLen {
 		//segment剩余空间够用,直接存新数据即可
-		glog.Log.Debug("segment body is enough to store new cache")
+		glog.Log.Debug("segment存储数据的Body够存储一条新数据")
 		newSegmentBodyStartIndex = newSegmentBodyLen
 		*newSegment.Body = append(*newSegment.Body, itemByte...)
 		return newSegment, segmentItem.NextItemStartIndex, true
 	}
 
 	//segment剩余空间不够
-	glog.Log.Debug("segment body is not enough,now will create a new segment")
+	glog.Log.Debug("segment存储数据的Body不够用,创建一个新的的segment")
 	//新建一个segment,填入数据
 	storeByte := make([]byte, 0, config.Conf.Core.SegmentSizeVal)
 	storeByte = append(storeByte, itemByte...)
