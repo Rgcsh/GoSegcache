@@ -88,8 +88,7 @@ func FilterSegment(ttlMapValue *segcache_service.TTLMapValue) {
 	segment := ttlMapValue.HeadSegment
 	//处理当前segment数据
 	startIndex := uint32(0)
-	storeByte := make([]byte, 0, config.Conf.Core.SegmentSizeVal)
-	newSegment := &segcache_service.Segment{TTLMapValuePoint: ttlMapValue, Body: &storeByte}
+	newSegment := &segcache_service.Segment{TTLMapValuePoint: ttlMapValue}
 	//新的头segment
 	newHeadSegment := newSegment
 	//对segment链表循环
@@ -148,10 +147,18 @@ func HandlerSegmentItem(oldSegment, newSegment *segcache_service.Segment, startI
 	itemByte := (*oldSegment.Body)[startIndex:segmentItem.NextItemStartIndex]
 	storeByteLen := len(itemByte)
 
+	//没有Body,新建一个 的情况
+	if *newSegment.Body == nil {
+		//新建一个segment,填入数据
+		storeByte := make([]byte, 0, utils.GetMaxSize(int(config.Conf.Core.SegmentSizeVal), storeByteLen))
+		*newSegment.Body = append(storeByte, itemByte...)
+		return newSegment, segmentItem.NextItemStartIndex, true
+	}
+
 	newSegmentBodyLen := len(*newSegment.Body)
 	var newSegmentBodyStartIndex = 0
 
-	//	然后判断 segment剩余空间是否够存新数据
+	//	判断 segment剩余空间是否够存新数据
 	if int(config.Conf.Core.SegmentSizeVal)-newSegmentBodyLen >= storeByteLen {
 		//segment剩余空间够用,直接存新数据即可
 		glog.Log.Debug("segment存储数据的Body够存储一条新数据")
@@ -163,7 +170,7 @@ func HandlerSegmentItem(oldSegment, newSegment *segcache_service.Segment, startI
 	//segment剩余空间不够
 	glog.Log.Debug("segment存储数据的Body不够用,创建一个新的的segment")
 	//新建一个segment,填入数据
-	storeByte := make([]byte, 0, config.Conf.Core.SegmentSizeVal)
+	storeByte := make([]byte, 0, utils.GetMaxSize(int(config.Conf.Core.SegmentSizeVal), storeByteLen))
 	storeByte = append(storeByte, itemByte...)
 	createNewSegment := &segcache_service.Segment{TTLMapValuePoint: ttlMapValue, NextSegment: nil, Body: &storeByte}
 	//将2个segment 指针链接

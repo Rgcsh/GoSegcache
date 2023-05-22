@@ -66,7 +66,7 @@ func (s *Service) Get(_ context.Context, r *proto.GetReq) (*proto.GetResponse, e
 	fmt.Println("再次获取查看是否改变", (*segment.Body)[visitFrequencyByteStartIndex:visitFrequencyByteStartIndex+segcache_service.LenVisitFrequencyByte])
 
 	// 返回数据
-	getResponse := proto.GetResponse{Message: "OK", Value: *segmentItem.ValueByte}
+	getResponse := proto.GetResponse{Message: "ok", Value: *segmentItem.ValueByte}
 	// 如果超时时间是 0,表示永不过期,不用返回 过期时间,否则就要计算过期时间
 	if time_util.TimeSubSeconds(time_util.UnixToTime(ttlMapValue.ExpireStartTime), time_util.GetZeroTime()) != 0 {
 		expireStartTime := time_util.TimeSubSeconds(&currentTime, time_util.UnixToTime(ttlMapValue.ExpireStartTime))

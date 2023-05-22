@@ -101,3 +101,13 @@ func GetProcessPhysicalMemory(pid int) (uint64, error) {
 	memoryInfoStat, err := p.MemoryInfo()
 	return memoryInfoStat.RSS, err
 }
+
+// GetMaxSize
+//
+//	@Description: 获取最大值
+func GetMaxSize(a, b int) int {
+	if a < b {
+		return b
+	}
+	return a
+}
