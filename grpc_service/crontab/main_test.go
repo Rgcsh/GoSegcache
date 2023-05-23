@@ -8,6 +8,7 @@ import (
 	"GoSegcache/segcache_service"
 	"GoSegcache/utils/time_util"
 	"bou.ke/monkey"
+	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/test/bufconn"
@@ -35,7 +36,7 @@ func init() {
 
 func TestMain(m *testing.M) {
 	//启动主动删除缓存功能 相关子协程
-	go CleanExpiredData()
+	//go CleanExpiredData()
 	if config.Conf.Core.LFUEnable == 1 {
 		go CleanExpiringData()
 	}
@@ -80,4 +81,21 @@ func FakeTimeNow(now string) {
 		}
 		return *t
 	})
+}
+
+func CheckSetGet(t *testing.T, c proto.GoSegcacheApiClient, key, valStr string, expireTime float32) {
+	value := []byte(valStr)
+	setReq := &proto.SetReq{Key: key, Value: value, ExpireTime: &expireTime}
+	if expireTime == 0 {
+		setReq.ExpireTime = nil
+	}
+	r, err := c.Set(context.Background(), setReq)
+	assert.Equal(t, err, nil)
+	assert.Equal(t, r.Message, "ok")
+
+	rGet, err := c.Get(context.Background(), &proto.GetReq{Key: key})
+	assert.Equal(t, err, nil)
+	assert.Equal(t, rGet.Message, "ok")
+	assert.Equal(t, rGet.Value, value)
+
 }

@@ -31,23 +31,14 @@ var lfuVisitCountLimit = config.Conf.Core.LFUVisitCountLimit
 //
 //	@Description:
 func CleanExpiringData() {
+	sleep := time.Second * 10
+	glog.Log.Debug(fmt.Sprintf("睡眠 %v秒后 尝试清除访问频率低的数据", sleep))
+	time.Sleep(sleep)
 	currentTime := time_util.GetCurrentTime()
 	glog.Log.Debug(fmt.Sprintf("开始清除处于过期范围内的部分访问频率低的数据 任务"))
 
-	//获取此程序消耗物理内存
-	usedRss, err := utils.GetProcessPhysicalMemory(pid)
-	if err != nil {
-		panic(fmt.Sprintf("Get current process memory info fail, error is %v", err))
-	}
-
-	// 检测 程序消耗的物理内存是否超过限制
-	memLimit := uint64(config.Conf.Core.LFUMemLimitVal)
-	glog.Log.Debug(fmt.Sprintf("获取到此程序消耗物理内存为:%v,配置中限制内存为:%v", memLimit, usedRss))
-	if usedRss > memLimit {
+	if !MemoryLimitCheck() {
 		//未超过限制进入下次循环 睡1分钟循环执行下一次
-		sleep := time.Second * 10
-		glog.Log.Debug(fmt.Sprintf("未超过内存限制,睡眠 %v秒后 进入下次循环", sleep))
-		time.Sleep(sleep)
 		CleanExpiringData()
 	}
 
@@ -75,9 +66,27 @@ func CleanExpiringData() {
 		})
 	}
 
-	glog.Log.Debug("睡1分钟循环执行下一次")
-	time.Sleep(time.Minute)
 	CleanExpiringData()
+}
+
+// MemoryLimitCheck
+//
+//	@Description: 检测 程序消耗内存是否超过 设置的值
+//	@return bool:
+func MemoryLimitCheck() bool {
+	//获取此程序消耗物理内存
+	usedRss, err := utils.GetProcessPhysicalMemory(pid)
+	if err != nil {
+		panic(fmt.Sprintf("Get current process memory info fail, error is %v", err))
+	}
+
+	// 检测 程序消耗的物理内存是否超过限制
+	memLimit := uint64(config.Conf.Core.LFUMemLimitVal)
+	glog.Log.Debug(fmt.Sprintf("获取到此程序消耗物理内存为:%v,配置中限制内存为:%v", memLimit, usedRss))
+	if usedRss > memLimit {
+		return true
+	}
+	return false
 }
 
 // FilterSegment
@@ -148,10 +157,11 @@ func HandlerSegmentItem(oldSegment, newSegment *segcache_service.Segment, startI
 	storeByteLen := len(itemByte)
 
 	//没有Body,新建一个 的情况
-	if *newSegment.Body == nil {
+	if newSegment.Body == nil {
 		//新建一个segment,填入数据
 		storeByte := make([]byte, 0, utils.GetMaxSize(int(config.Conf.Core.SegmentSizeVal), storeByteLen))
-		*newSegment.Body = append(storeByte, itemByte...)
+		storeByte = append(storeByte, itemByte...)
+		newSegment.Body = &storeByte
 		return newSegment, segmentItem.NextItemStartIndex, true
 	}
 

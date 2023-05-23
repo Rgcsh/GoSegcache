@@ -155,7 +155,7 @@ func GetPastDate(days int) *time.Time {
 //	@return *time.Time:
 func GetIntervalTime(Seconds float32, t *time.Time) *time.Time {
 	//将Seconds(秒)转为纳秒
-	nano := time.Duration(Seconds * 1000 * 1000)
+	nano := time.Duration(Seconds * 1000 * 1000 * 1000)
 	intervalTime := t.Add(nano)
 	return &intervalTime
 }
