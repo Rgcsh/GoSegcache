@@ -63,7 +63,6 @@ func (s *Service) Get(_ context.Context, r *proto.GetReq) (*proto.GetResponse, e
 	segmentBody[visitFrequencyByteStartIndex] = currentUnixMinutesByte[0]
 	segmentBody[visitFrequencyByteStartIndex+1] = currentUnixMinutesByte[1]
 	segmentBody[visitFrequencyByteStartIndex+2] = newVisitCountByte[0]
-	fmt.Println("再次获取查看是否改变", (*segment.Body)[visitFrequencyByteStartIndex:visitFrequencyByteStartIndex+segcache_service.LenVisitFrequencyByte])
 
 	// 返回数据
 	getResponse := proto.GetResponse{Message: "ok", Value: *segmentItem.ValueByte}
@@ -106,12 +105,12 @@ func CalVisitCount(visitFrequencyByte []byte, currentUnixFullMinutes uint32, key
 	} else {
 		unitMinutesSub = currentUnixMinutes - storeUnixMinutes
 	}
-	damping := unitMinutesSub / config.Conf.Core.LFUDecayTime
+	damping := float64(unitMinutesSub) / config.Conf.Core.LFUDecayTime
 	glog.Log.Debug(fmt.Sprintf("get key:%v damping is :%v", key, damping))
 	//根据 访问次数-衰减值  算出最新的值;
 	var newVisitCount uint8
 	// 最终值,不能为负数,最少为0
-	if damping > uint16(visitCount) {
+	if damping > float64(visitCount) {
 		newVisitCount = 0
 	} else {
 		newVisitCount = visitCount - uint8(damping)

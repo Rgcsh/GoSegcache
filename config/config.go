@@ -21,7 +21,7 @@ type Core struct {
 	//grpc端口号
 	ServerPort int `default:"5000" yaml:"ServerPort"`
 	// 表示 LFU衰减时,衰减程度,值越大,衰减越慢; 值 >=0,为uint16类型,最大值为65535;默认值为1,表示1分钟访问次数减少1;;默认值为1
-	LFUDecayTime uint16 `validate:"gte=0 & lte=65535" default:"1" yaml:"LFUDecayTime"`
+	LFUDecayTime float64 `validate:"gte=0 & lte=65535" default:"1" yaml:"LFUDecayTime"`
 	// 表示 LFU增加访问量的概率,数值越大,则概率越小,越不容易新增访问次数; 值 >=0,为uint16类型,最大值为65535;;默认值为10
 	LFULogFactor uint16 `validate:"gte=0 & lte=65535" default:"10" yaml:"LFULogFactor"`
 	// 设置go程序运行使用的最大内存; 如 1B,2K,3M,4G,5T;默认值为1G
