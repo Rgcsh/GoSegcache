@@ -50,7 +50,7 @@ type SegmentBodyItem struct {
 func ExtractSegmentItem(segment *Segment, startIndex uint32) (*SegmentBodyItem, bool) {
 	b := *segment.Body
 	//切片索引越界,表示 没有数据
-	if startIndex+4 > SegmentBodyLen {
+	if startIndex+4 > uint32(len(b)) {
 		return nil, false
 	}
 	//获取 key占用多少字节的值(固定4字节)

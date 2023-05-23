@@ -94,3 +94,25 @@ func TestGet2(t *testing.T) {
 	_, _ = c.Get(context.Background(), &proto.GetReq{Key: key})
 
 }
+
+func TestGet3(t *testing.T) {
+	//测试 当key过期后,再次获取数据,在没有清理过期缓存功能时,应该是能获取到 数据
+	c := proto.NewGoSegcacheApiClient(Connect())
+	key := "test key expire"
+	value := []byte("value111")
+	expireTime := float32(1)
+	setReq := &proto.SetReq{Key: key, Value: value, ExpireTime: &expireTime}
+
+	r, err := c.Set(context.Background(), setReq)
+	assert.Equal(t, err, nil)
+	assert.Equal(t, r.Message, "ok")
+
+	rGet, errGet := c.Get(context.Background(), &proto.GetReq{Key: key})
+	assert.Equal(t, errGet, nil)
+	assert.Equal(t, rGet.Message, "ok")
+
+	time.Sleep(time.Second * 2)
+	rGet, errGet = c.Get(context.Background(), &proto.GetReq{Key: key})
+	assert.Equal(t, errGet, nil)
+	assert.Equal(t, rGet.Message, "ok")
+}

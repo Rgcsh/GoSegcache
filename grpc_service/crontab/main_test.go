@@ -1,10 +1,13 @@
-package rpc_api
+package crontab
 
 import (
 	"GoSegcache/config"
+	"GoSegcache/grpc_service/rpc_api"
 	"GoSegcache/pkg/glog"
 	"GoSegcache/proto"
 	"GoSegcache/segcache_service"
+	"GoSegcache/utils/time_util"
+	"bou.ke/monkey"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/test/bufconn"
@@ -13,6 +16,7 @@ import (
 	"os"
 	"runtime/debug"
 	"testing"
+	"time"
 )
 import "context"
 
@@ -30,10 +34,16 @@ func init() {
 }
 
 func TestMain(m *testing.M) {
+	//启动主动删除缓存功能 相关子协程
+	go CleanExpiredData()
+	if config.Conf.Core.LFUEnable == 1 {
+		go CleanExpiringData()
+	}
+
 	BufListener = bufconn.Listen(1024 * 1024)
 	s := grpc.NewServer(grpc.MaxRecvMsgSize(segcache_service.SegmentBodyLen))
 
-	proto.RegisterGoSegcacheApiServer(s, &Service{})
+	proto.RegisterGoSegcacheApiServer(s, &rpc_api.Service{})
 
 	go func() {
 		if err := s.Serve(BufListener); err != nil {
@@ -55,4 +65,19 @@ func Connect() *grpc.ClientConn {
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	return conn
+}
+
+// FakeTimeNow
+//
+//	@Description: 通过 monkey patch伪造时间,模拟时间流逝使用
+//	@param now:
+func FakeTimeNow(now string) {
+	println("造假时间为:", now)
+	monkey.Patch(time.Now, func() time.Time {
+		t, err := time_util.StringToTime(now, time_util.DateTimeFormat)
+		if err != nil {
+			panic(err)
+		}
+		return *t
+	})
 }

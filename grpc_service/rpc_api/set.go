@@ -72,19 +72,18 @@ func (s *Service) Set(_ context.Context, r *proto.SetReq) (*proto.SetResponse, e
 		glog.Log.Debug("key has existed in TTLMap")
 		//	有TTL map,就取指向segment的尾指针
 		ttlMapValueObj := ttlMapValueInterface.(*segcache_service.TTLMapValue)
-		tailSegment := *ttlMapValueObj.TailSegment
-		body := *tailSegment.Body
-		lenBody := len(body)
+		tailSegment := ttlMapValueObj.TailSegment
+		body := tailSegment.Body
+		lenBody := len(*body)
 		var segmentPoint *segcache_service.Segment
 		var startIndex = 0
 		//	然后判断 segment剩余空间是否够存新数据
 		if int(config.Conf.Core.SegmentSizeVal)-lenBody >= storeByteLen {
 			glog.Log.Debug("segment body is enough to store new cache")
 			//segment剩余空间够用,直接存新数据即可
-			body = append(body, mergeSegmentByte...)
-			*tailSegment.Body = body
+			*body = append(*body, mergeSegmentByte...)
 			startIndex = lenBody
-			segmentPoint = &tailSegment
+			segmentPoint = tailSegment
 		} else {
 			//segment剩余空间不够,新建一个,然后与老的segment 指针链接
 			segmentPoint = newSegmentAndPoint(mergeSegmentByte, ttlMapValueObj, storeByteLen)
