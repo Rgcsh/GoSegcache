@@ -3,6 +3,7 @@ module GoSegcache
 go 1.20
 
 require (
+	bou.ke/monkey v1.0.2
 	github.com/creasty/defaults v1.7.0
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/shirou/gopsutil v3.21.11+incompatible

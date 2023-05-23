@@ -102,6 +102,7 @@ func CalVisitCount(visitFrequencyByte []byte, currentUnixFullMinutes uint32, key
 	var unitMinutesSub uint16
 	if currentUnixMinutes < storeUnixMinutes {
 		unitMinutesSub = math.MaxUint16 - storeUnixMinutes + currentUnixMinutes
+		glog.Log.Debug(fmt.Sprintf("key:%v 距离上次访问时间过去了一个周期(45天),unitMinutesSub:%v", key, unitMinutesSub))
 	} else {
 		unitMinutesSub = currentUnixMinutes - storeUnixMinutes
 	}

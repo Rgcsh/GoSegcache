@@ -3,47 +3,94 @@ package rpc_api
 import (
 	"GoSegcache/config"
 	"GoSegcache/proto"
+	"GoSegcache/utils/time_util"
+	"bou.ke/monkey"
 	"context"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
 )
 
-func TestGet1(t *testing.T) {
+// FakeTimeNow
+//
+//	@Description: 通过 monkey patch伪造时间,模拟时间流逝使用
+//	@param now:
+func FakeTimeNow(now string) {
+	println("造假时间为:", now)
+	monkey.Patch(time.Now, func() time.Time {
+		t, err := time_util.StringToTime(now, time_util.DateTimeFormat)
+		if err != nil {
+			panic(err)
+		}
+		return *t
+	})
+}
+
+func TestGet(t *testing.T) {
+	// 测试 key不存在的情况
 	c := proto.NewGoSegcacheApiClient(Connect())
-	rGet, errGet := c.Get(context.Background(), &proto.GetReq{Key: "unexist key"})
+	rGet, errGet := c.Get(context.Background(), &proto.GetReq{Key: "not exist key"})
 	assert.Equal(t, errGet, nil)
 	assert.Equal(t, rGet.Message, "no exist")
 }
 
-func TestGet(t *testing.T) {
-	//测试 多次GET一个key时 访问频率的变化
-
+func TestGet1(t *testing.T) {
+	//测试 多次GET一个key时 访问频率的增长情况
 	c := proto.NewGoSegcacheApiClient(Connect())
-	key := "TEST KEY"
+	key := "test key"
 	value := []byte("value")
-	expireTime := float32(24 * 60 * 60)
+	expireTime := float32(24 * 60 * 60 * 90)
 	setReq := &proto.SetReq{Key: key, Value: value, ExpireTime: &expireTime}
 
 	r, err := c.Set(context.Background(), setReq)
 	assert.Equal(t, err, nil)
 	assert.Equal(t, r.Message, "ok")
 
-	//先将 访问次数 根据算法 增长到 最大值 255
-	for i := 0; i < 40000; i++ {
+	//访问100次,访问次数的值根据lfu算法应该有所增长
+	loopCount := 100
+	for i := 0; i < loopCount; i++ {
+		rGet, errGet := c.Get(context.Background(), &proto.GetReq{Key: key})
+		assert.Equal(t, errGet, nil)
+		assert.Equal(t, rGet.Message, "ok")
+	}
+
+}
+
+func TestGet2(t *testing.T) {
+	//测试 多次GET一个key后,间隔一段时间,其 访问次数的衰减情况
+	FakeTimeNow("2023-01-01 12:00:00")
+
+	c := proto.NewGoSegcacheApiClient(Connect())
+	key := "test key"
+	value := []byte("value")
+	//90天过期
+	expireTime := float32(24 * 60 * 60 * 90)
+	setReq := &proto.SetReq{Key: key, Value: value, ExpireTime: &expireTime}
+
+	r, err := c.Set(context.Background(), setReq)
+	assert.Equal(t, err, nil)
+	assert.Equal(t, r.Message, "ok")
+
+	////访问100次,访问次数的值根据lfu算法应该有所增长
+	monkey.Unpatch(time.Now)
+	loopCount := 100
+	for i := 0; i < loopCount; i++ {
 		rGet, errGet := c.Get(context.Background(), &proto.GetReq{Key: key})
 		assert.Equal(t, errGet, nil)
 		assert.Equal(t, rGet.Message, "ok")
 	}
 
 	//	再睡眠1min,检查 衰减结果 是否衰减 10
-	config.Conf.Core.LFUDecayTime = 0.1
-	time.Sleep(time.Minute)
+	FakeTimeNow("2023-01-01 12:10:00")
 	_, _ = c.Get(context.Background(), &proto.GetReq{Key: key})
 
 	// 一次性将 衰减程度最大,检查 衰减结果 是否为0
+	FakeTimeNow("2023-01-01 12:15:00")
 	config.Conf.Core.LFUDecayTime = 0.001
-	time.Sleep(time.Minute)
+	_, _ = c.Get(context.Background(), &proto.GetReq{Key: key})
+
+	// 超过 分钟循环周期,检查 衰减结果 是否为0
+	FakeTimeNow("2023-02-14 12:16:00")
 	_, _ = c.Get(context.Background(), &proto.GetReq{Key: key})
 
 }

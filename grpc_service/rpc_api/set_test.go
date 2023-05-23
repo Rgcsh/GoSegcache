@@ -67,7 +67,7 @@ func TestSet2(t *testing.T) {
 	expireTime := float32(24*60*60 + 1)
 
 	c := proto.NewGoSegcacheApiClient(Connect())
-	config.Conf.Core.SegmentSizeVal = 10
+	config.Conf.Core.SegmentSizeVal = 60
 	for i := 0; i < 100; i++ {
 		key = fmt.Sprintf("key:%v", i)
 		valStr = fmt.Sprintf("value is %v", key)
