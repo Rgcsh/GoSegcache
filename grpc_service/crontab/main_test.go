@@ -99,3 +99,9 @@ func CheckSetGet(t *testing.T, c proto.GoSegcacheApiClient, key, valStr string, 
 	assert.Equal(t, rGet.Value, value)
 
 }
+
+func GetCheck(t *testing.T, c proto.GoSegcacheApiClient, key, message string) {
+	rGet, err := c.Get(context.Background(), &proto.GetReq{Key: key})
+	assert.Equal(t, err, nil)
+	assert.Equal(t, rGet.Message, message)
+}

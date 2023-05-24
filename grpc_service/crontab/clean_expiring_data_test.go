@@ -52,31 +52,22 @@ func TestCleanExpiringData(t *testing.T) {
 	for i := 0; i < loopCount; i++ {
 		if i%3 == 0 {
 			key = fmt.Sprintf("key:%v", i)
-			rGet, err := c.Get(context.Background(), &proto.GetReq{Key: key})
-			assert.Equal(t, err, nil)
-			assert.Equal(t, rGet.Message, "ok")
+			GetCheck(t, c, key, "ok")
 		}
 	}
 
 	time.Sleep(time.Second * 12)
 
-	//检查热key数据应该仍存在
+	//结果检测
 	for i := 0; i < loopCount; i++ {
 		if i%3 == 0 {
+			//检查热key数据应该仍存在
 			key = fmt.Sprintf("key:%v", i)
-			rGet, err := c.Get(context.Background(), &proto.GetReq{Key: key})
-			assert.Equal(t, err, nil)
-			assert.Equal(t, rGet.Message, "ok")
-		}
-	}
-
-	//	检测 非热key数据应该被删除
-	for i := 0; i < loopCount; i++ {
-		if i%3 != 0 {
+			GetCheck(t, c, key, "ok")
+		} else {
+			//	检测 非热key数据应该被删除
 			key = fmt.Sprintf("key:%v", i)
-			rGet, err := c.Get(context.Background(), &proto.GetReq{Key: key})
-			assert.Equal(t, err, nil)
-			assert.Equal(t, rGet.Message, "no exist")
+			GetCheck(t, c, key, "no exist")
 		}
 	}
 }

@@ -29,9 +29,7 @@ func FakeTimeNow(now string) {
 func TestGet(t *testing.T) {
 	// 测试 key不存在的情况
 	c := proto.NewGoSegcacheApiClient(Connect())
-	rGet, errGet := c.Get(context.Background(), &proto.GetReq{Key: "not exist key"})
-	assert.Equal(t, errGet, nil)
-	assert.Equal(t, rGet.Message, "no exist")
+	GetCheck(t, c, "not exist key", "no exist")
 }
 
 func TestGet1(t *testing.T) {
@@ -49,9 +47,7 @@ func TestGet1(t *testing.T) {
 	//访问100次,访问次数的值根据lfu算法应该有所增长
 	loopCount := 100
 	for i := 0; i < loopCount; i++ {
-		rGet, errGet := c.Get(context.Background(), &proto.GetReq{Key: key})
-		assert.Equal(t, errGet, nil)
-		assert.Equal(t, rGet.Message, "ok")
+		GetCheck(t, c, key, "ok")
 	}
 
 }
@@ -75,9 +71,7 @@ func TestGet2(t *testing.T) {
 	monkey.Unpatch(time.Now)
 	loopCount := 100
 	for i := 0; i < loopCount; i++ {
-		rGet, errGet := c.Get(context.Background(), &proto.GetReq{Key: key})
-		assert.Equal(t, errGet, nil)
-		assert.Equal(t, rGet.Message, "ok")
+		GetCheck(t, c, key, "ok")
 	}
 
 	//	再睡眠1min,检查 衰减结果 是否衰减 10
@@ -107,12 +101,8 @@ func TestGet3(t *testing.T) {
 	assert.Equal(t, err, nil)
 	assert.Equal(t, r.Message, "ok")
 
-	rGet, errGet := c.Get(context.Background(), &proto.GetReq{Key: key})
-	assert.Equal(t, errGet, nil)
-	assert.Equal(t, rGet.Message, "ok")
+	GetCheck(t, c, key, "ok")
 
 	time.Sleep(time.Second * 2)
-	rGet, errGet = c.Get(context.Background(), &proto.GetReq{Key: key})
-	assert.Equal(t, errGet, nil)
-	assert.Equal(t, rGet.Message, "ok")
+	GetCheck(t, c, key, "ok")
 }

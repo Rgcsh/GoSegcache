@@ -3,28 +3,9 @@ package rpc_api
 import (
 	"GoSegcache/config"
 	"GoSegcache/proto"
-	"context"
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"testing"
 )
-
-func CheckSetGet(t *testing.T, c proto.GoSegcacheApiClient, key, valStr string, expireTime float32) {
-	value := []byte(valStr)
-	setReq := &proto.SetReq{Key: key, Value: value, ExpireTime: &expireTime}
-	if expireTime == 0 {
-		setReq.ExpireTime = nil
-	}
-	r, err := c.Set(context.Background(), setReq)
-	assert.Equal(t, err, nil)
-	assert.Equal(t, r.Message, "ok")
-
-	rGet, err := c.Get(context.Background(), &proto.GetReq{Key: key})
-	assert.Equal(t, err, nil)
-	assert.Equal(t, rGet.Message, "ok")
-	assert.Equal(t, rGet.Value, value)
-
-}
 
 // TestSet1
 //

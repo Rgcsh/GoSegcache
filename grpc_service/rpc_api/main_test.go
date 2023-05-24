@@ -5,6 +5,7 @@ import (
 	"GoSegcache/pkg/glog"
 	"GoSegcache/proto"
 	"GoSegcache/segcache_service"
+	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/test/bufconn"
@@ -55,4 +56,27 @@ func Connect() *grpc.ClientConn {
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	return conn
+}
+
+func CheckSetGet(t *testing.T, c proto.GoSegcacheApiClient, key, valStr string, expireTime float32) {
+	value := []byte(valStr)
+	setReq := &proto.SetReq{Key: key, Value: value, ExpireTime: &expireTime}
+	if expireTime == 0 {
+		setReq.ExpireTime = nil
+	}
+	r, err := c.Set(context.Background(), setReq)
+	assert.Equal(t, err, nil)
+	assert.Equal(t, r.Message, "ok")
+
+	rGet, err := c.Get(context.Background(), &proto.GetReq{Key: key})
+	assert.Equal(t, err, nil)
+	assert.Equal(t, rGet.Message, "ok")
+	assert.Equal(t, rGet.Value, value)
+
+}
+
+func GetCheck(t *testing.T, c proto.GoSegcacheApiClient, key, message string) {
+	rGet, err := c.Get(context.Background(), &proto.GetReq{Key: key})
+	assert.Equal(t, err, nil)
+	assert.Equal(t, rGet.Message, message)
 }
