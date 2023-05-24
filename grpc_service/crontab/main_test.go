@@ -35,12 +35,6 @@ func init() {
 }
 
 func TestMain(m *testing.M) {
-	//启动主动删除缓存功能 相关子协程
-	//go CleanExpiredData()
-	if config.Conf.Core.LFUEnable == 1 {
-		go CleanExpiringData()
-	}
-
 	BufListener = bufconn.Listen(1024 * 1024)
 	s := grpc.NewServer(grpc.MaxRecvMsgSize(segcache_service.SegmentBodyLen))
 

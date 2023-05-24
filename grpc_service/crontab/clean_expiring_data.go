@@ -70,7 +70,7 @@ func CleanExpiringData() {
 // MemoryLimitCheck
 //
 //	@Description: 检测 程序消耗内存是否超过 设置的值
-//	@return bool:
+//	@return bool: true:触发内存限制 false:未触发
 func MemoryLimitCheck() bool {
 	//获取此程序消耗物理内存
 	usedRss, err := utils.GetProcessPhysicalMemory(pid)

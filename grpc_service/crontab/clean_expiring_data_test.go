@@ -25,13 +25,14 @@ func TestCleanExpiringData(t *testing.T) {
 
 	config.Conf.Core.LFUVisitCountLimit = 1
 	config.Conf.Core.SegmentSizeVal = 60
+	config.Conf.Core.LFUMemLimitVal = 10
 	var key string
 	var valStr string
 	expireTime := float32(2 * 60 * 60)
 
 	c := proto.NewGoSegcacheApiClient(Connect())
 	//设置缓存
-	loopCount := 30
+	loopCount := 300
 	for i := 0; i < loopCount; i++ {
 		key = fmt.Sprintf("key:%v", i)
 		valStr = fmt.Sprintf("value is %v", key)
@@ -44,10 +45,11 @@ func TestCleanExpiringData(t *testing.T) {
 		assert.Equal(t, err, nil)
 		assert.Equal(t, r.Message, "ok")
 	}
+	CheckSetGet(t, c, "too long", "val", expireTime+2*24*60*60)
 
 	//造假时间 及 触发内存限制
 	FakeTimeNow("2023-01-01 14:00:10")
-	FakeMemoryLimitCheck()
+
 	//部分数据生成热key
 	for i := 0; i < loopCount; i++ {
 		if i%3 == 0 {
@@ -56,6 +58,10 @@ func TestCleanExpiringData(t *testing.T) {
 		}
 	}
 
+	//运行被测试的函数
+	if config.Conf.Core.LFUEnable == 1 {
+		go CleanExpiringData()
+	}
 	time.Sleep(time.Second * 12)
 
 	//结果检测
