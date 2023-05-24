@@ -25,8 +25,6 @@ var TTLMapNeedExpiring = []*sync.Map{&segcache_service.TTLMapM, &segcache_servic
 // 当前程序进程ID
 var pid = utils.GetProcessId()
 
-var lfuVisitCountLimit = config.Conf.Core.LFUVisitCountLimit
-
 // CleanExpiringData
 //
 //	@Description:
@@ -113,7 +111,7 @@ func FilterSegment(ttlMapValue *segcache_service.TTLMapValue) {
 		}
 
 		glog.Log.Debug("到下一个segment继续执行")
-		segment := segment.NextSegment
+		segment = segment.NextSegment
 		if segment == nil {
 			glog.Log.Debug("segment链表已经全部处理完成")
 			break
@@ -144,8 +142,8 @@ func HandlerSegmentItem(oldSegment, newSegment *segcache_service.Segment, startI
 	//获取访问次数,并与 配置的 LFUVisitCountLimit对比
 	visitCount := transform.ByteToUint8((*oldSegment.Body)[segmentItem.VisitFrequencyByteStartIndex+2 : segmentItem.VisitFrequencyByteStartIndex+3])
 	// < LFUVisitCountLimit时,删除KeyHashMap中的key即可
-	glog.Log.Debug(fmt.Sprintf("缓存key:%v 访问次数:%v,配置访问次数阈值:%v", key, visitCount, lfuVisitCountLimit))
-	if visitCount < lfuVisitCountLimit {
+	glog.Log.Debug(fmt.Sprintf("缓存key:%v 访问次数:%v,配置访问次数阈值:%v", key, visitCount, config.Conf.Core.LFUVisitCountLimit))
+	if visitCount < config.Conf.Core.LFUVisitCountLimit {
 		glog.Log.Debug(fmt.Sprintf("未超过配置访问次数阈值,从KeyHashMap中删除key:%v对应相关数据", key))
 		segcache_service.KeyHashMap.Delete(key)
 		return newSegment, segmentItem.NextItemStartIndex, true

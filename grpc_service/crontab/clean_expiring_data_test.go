@@ -31,53 +31,59 @@ func TestCleanExpiringData(t *testing.T) {
 
 	c := proto.NewGoSegcacheApiClient(Connect())
 	//设置缓存
-	for i := 0; i < 10; i++ {
+	loopCount := 30
+	for i := 0; i < loopCount; i++ {
 		key = fmt.Sprintf("key:%v", i)
 		valStr = fmt.Sprintf("value is %v", key)
-		CheckSetGet(t, c, key, valStr, expireTime)
+		value := []byte(valStr)
+		setReq := &proto.SetReq{Key: key, Value: value, ExpireTime: &expireTime}
+		if expireTime == 0 {
+			setReq.ExpireTime = nil
+		}
+		r, err := c.Set(context.Background(), setReq)
+		assert.Equal(t, err, nil)
+		assert.Equal(t, r.Message, "ok")
 	}
 
+	//造假时间 及 触发内存限制
 	FakeTimeNow("2023-01-01 14:00:10")
 	FakeMemoryLimitCheck()
 	//部分数据生成热key
-	for i := 0; i < 10; i++ {
-		if i%3 != 0 {
-			continue
+	for i := 0; i < loopCount; i++ {
+		if i%3 == 0 {
+			key = fmt.Sprintf("key:%v", i)
+			rGet, err := c.Get(context.Background(), &proto.GetReq{Key: key})
+			assert.Equal(t, err, nil)
+			assert.Equal(t, rGet.Message, "ok")
 		}
-		key = fmt.Sprintf("key:%v", i)
-		rGet, err := c.Get(context.Background(), &proto.GetReq{Key: key})
-		assert.Equal(t, err, nil)
-		assert.Equal(t, rGet.Message, "ok")
 	}
 
 	time.Sleep(time.Second * 12)
 
 	//检查热key数据应该仍存在
-	for i := 0; i < 10; i++ {
-		if i%3 != 0 {
-			continue
+	for i := 0; i < loopCount; i++ {
+		if i%3 == 0 {
+			key = fmt.Sprintf("key:%v", i)
+			rGet, err := c.Get(context.Background(), &proto.GetReq{Key: key})
+			assert.Equal(t, err, nil)
+			assert.Equal(t, rGet.Message, "ok")
 		}
-		key = fmt.Sprintf("key:%v", i)
-		rGet, err := c.Get(context.Background(), &proto.GetReq{Key: key})
-		assert.Equal(t, err, nil)
-		assert.Equal(t, rGet.Message, "ok")
 	}
 
 	//	检测 非热key数据应该被删除
-	for i := 0; i < 10; i++ {
-		if i%3 == 0 {
-			continue
+	for i := 0; i < loopCount; i++ {
+		if i%3 != 0 {
+			key = fmt.Sprintf("key:%v", i)
+			rGet, err := c.Get(context.Background(), &proto.GetReq{Key: key})
+			assert.Equal(t, err, nil)
+			assert.Equal(t, rGet.Message, "no exist")
 		}
-		key = fmt.Sprintf("key:%v", i)
-		rGet, err := c.Get(context.Background(), &proto.GetReq{Key: key})
-		assert.Equal(t, err, nil)
-		assert.Equal(t, rGet.Message, "no exist")
 	}
 }
 
-// FakeTimeNow
+// FakeMemoryLimitCheck
 //
-//	@Description: 通过 monkey patch伪造时间,模拟时间流逝使用
+//	@Description: 通过 monkey patch伪造触发 内存限制
 //	@param now:
 func FakeMemoryLimitCheck() {
 	monkey.Patch(MemoryLimitCheck, func() bool {
