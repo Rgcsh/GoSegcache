@@ -7,6 +7,17 @@ import (
 	"testing"
 )
 
+func TestSet(t *testing.T) {
+	//测试用例部分
+	//用例场景 普通的 set使用
+	c := proto.NewGoSegcacheApiClient(Connect())
+	expireTime := float32(20)
+	key := "你好"
+	valStr := "abc"
+	CheckSetGet(t, c, key, valStr, expireTime)
+	CheckSetGet(t, c, key, "abcde", expireTime)
+}
+
 // TestSet1
 //
 //	@Description: 不同过期时间范围(秒,分钟,小时,永不过期 4种),检查 存入的TTLMap级别是否正确
@@ -54,15 +65,4 @@ func TestSet2(t *testing.T) {
 		valStr = fmt.Sprintf("value is %v", key)
 		CheckSetGet(t, c, key, valStr, expireTime)
 	}
-}
-
-func TestSet(t *testing.T) {
-	//测试用例部分
-	//用例场景 普通的 set使用
-	c := proto.NewGoSegcacheApiClient(Connect())
-	expireTime := float32(2)
-	//expire_time := float32(10)
-	key := "你好"
-	valStr := "abc"
-	CheckSetGet(t, c, key, valStr, expireTime)
 }

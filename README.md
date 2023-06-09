@@ -5,34 +5,45 @@
 基于 [Segcache: a memory-efficient and scalable in-memory key-value cache for small objects](https://www.usenix.org/system/files/nsdi21-yang.pdf)
 2021年的论文提供的缓存思路实现的一种缓存方式;
 
-### 缓存设计思路
-
 ### 行业痛点
 
-* 缓存一个缓存数据需要耗费很多 额外的数据空间;
-* 缓存过期时,无法高效主动的回收内存;
+* 缓存一个缓存数据需要耗费很多 额外的数据空间,如 过期时间
+* 缓存过期时,无法高效主动的回收内存
+
+### 缓存设计思路
+
+* 将所有key的缓存过期时间 单独进行分类存储
+* 缓存数据 使用byte类型的切片存储,保证不会出现内存空洞
 
 ### 优点
 
-* 节约存储数据时耗费的空间:将每个缓存中可公用的元数据 集中存储,如超时时间,创建时间;
-* 主动及时删除过期缓存,做到及时回收内存空间;
+* 节约存储数据时耗费的空间:将每个缓存中可公用的元数据 集中存储,如超时时间,创建时间
+* 主动及时删除过期缓存,做到及时回收内存空间
 
 ### 缺点
 
-* 淡化了缓存的过期时间精度,可能会使缓存提前过期或稍后过期(在缓存超过1天时间的,过期最大误差为1h),但是在缓存系统中,这种问题可以忽略;
-* todo:后续 尝试优化 TTL buckets的存储结构 达到 存取效率 及 缓存时间问题的平衡;
+* 淡化了缓存的过期时间精度,可能会使缓存提前过期或稍后过期(在缓存超过1天时间的,过期最大误差为1h),但是在缓存系统中,这种问题可以忽略
 
 ### 与其他缓存平台的对比
 
-* 与redis,memcached相比,如上所述优点仍然存在;
+* 与redis,memcached相比,如上所述优点仍然存在
 
 ### 实现功能
 
-* set命令存数据 key:string/int 类型 val:任何类型 expire:float/int类型
+* set命令存数据 key:string 类型 val:bytes切片类型 expire:float类型
 * get命令取数据,并根据LFU算法设置其热度值
-* 每秒定时遍历TTL buckets 删除已经完全过期的segment数据,及根据LFU算法的热度值删除刚开始过期的数据,并重新分配内存;
+* 每秒定时遍历TTL buckets 删除已经完全过期的segment数据,达到内存回收的目的
+* 每隔10秒检查此系统占用内存是否超过限制,超过则 根据LFU算法的热度值删除刚开始过期的部分数据,并重新分配内存,达到内存回收的目的
 
 ### 相关数据结构及存储的数据概述
+
+#### 详细数据结构示意图
+
+![img.png](docs/img.png)
+
+#### 数据结构间 交互图
+
+![img.png](docs/img1.png)
 
 #### TTL(有效时间)级别分为3种,具体如下
 
@@ -78,6 +89,12 @@
 
 * 使用一致性hash算法实现
 
+# todo
+
+* [go性能优化方法](https://tehub.com/a/c2qgqWywfl)
+* 性能测试及与redis,memcached对比
+*
+
 # 相关链接
 
 * [redis LFU算法概览](https://blog.csdn.net/u010887744/article/details/110357096)
@@ -86,8 +103,3 @@
 * [psutil使用](https://blog.csdn.net/haiming0415/article/details/125313441)
 * [VSS、RSS、PSS、USS 内存使用分析](https://blog.csdn.net/m0_51504545/article/details/119685325)
 * [gomonkey permission denied](https://blog.csdn.net/D1124615130/article/details/121660126)
-* 
-# todo
-
-* go性能优化方法 https://tehub.com/a/c2qgqWywfl
-
